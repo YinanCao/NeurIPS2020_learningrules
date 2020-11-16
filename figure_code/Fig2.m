@@ -1,6 +1,7 @@
 clear; clc;close all;
 restoredefaultpath
 d1 = 'initialW=small.mat';
+% download the saved statistics here: https://osf.io/encym/?view_only=9d8c0969fce74f9591a2fcb4a6da8506
 
 load(d1)
 mm = 1500;
