@@ -3,7 +3,7 @@ clear; clc; close all
 
 [R,~] = qr(randn(8,8));
 X = R; % input matrix, orthonormal
-% X = eye(8); % input matrix = one-hot column vectors
+% X = eye(8); % alternatively, input matrix = one-hot column vectors
 
 % target output matrix, each col = one object
 % each row is a feature:
@@ -134,6 +134,7 @@ parfor pair = 1:size(ge_pair,1)
 
             end
             mode_components(:,ep) = diag(U'*W2*W1*V); % mode strength
+            % training error:
             err(ep) = norm(Y-W2*W1*X,'fro').^2; % frobenius norm^2
             W1_norm(ep) = norm(W1,'fro');
             W2_norm(ep) = norm(W2,'fro');
@@ -141,8 +142,8 @@ parfor pair = 1:size(ge_pair,1)
             st_w1_chl = norm(lr*delta_W1_chl,'fro');
             st_w2_chl = norm(lr*delta_W2_chl,'fro');
             
-
-            if eta >= 0
+            % Weight updates:
+            if eta >= 0 % W1 update
                 W1 = W1 + lr*delta_W1_chl + eta*delta_W1_hebb;
                 st_w1_h  = norm(eta*delta_W1_hebb,'fro');
                 st_w1_tol = norm(lr*delta_W1_chl + eta*delta_W1_hebb, 'fro');
@@ -156,8 +157,9 @@ parfor pair = 1:size(ge_pair,1)
                 st_w1_h  = norm(bsxfun(@times,eta*(delta_W1_hebb),1./(nn+1)),'fro');
                 st_w1_tol = norm(a,'fro');
             end
-            W2 = W2 + lr*delta_W2_chl;
+            W2 = W2 + lr*delta_W2_chl; % W2 update
             
+            % synaptic weight changes:
             delta_w(:,ep) = [st_w1_chl,st_w1_h,st_w1_tol,st_w2_chl];
             
         end % end of epoch
