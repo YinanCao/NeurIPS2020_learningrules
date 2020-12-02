@@ -5,7 +5,19 @@ clear; clc; close all
 X = R; % input matrix, orthonormal
 % X = eye(8); % input matrix = one-hot column vectors
 
-% eta sampling:
+% target output matrix, each col = one object
+% each row is a feature:
+Y = [1 1 1 1 1 1 1 1 
+     1 1 1 1 0 0 0 0
+     0 0 0 0 1 1 1 1
+     1 1 0 0 0 0 0 0
+     0 0 1 1 0 0 0 0
+     0 0 0 0 1 1 0 0
+     0 0 0 0 0 0 1 1
+     eye(4),zeros(4,4)
+     zeros(4,4),eye(4)];
+
+% eta/gamma sampling:
 s = linspace(-5,log10(0.8),80);
 s = 10.^s;
 s = [-s,0,s];
@@ -26,36 +38,27 @@ if Nwork ~= ndesiredworkers
   parpool('local', ndesiredworkers, 'IdleTimeout', 30);
 end
 
+% small vs. large inititialization of weight matrices
 init_w = [1e-10; .1];
 wstr = {'small_normsq_orthX';'large_normsq_ultimate'};
 
-for whichweight = 1 %1:length(init_w)
+for whichweight = 1:length(init_w)
 
 lr = 0.005; % learning rate
-parm.scale   = init_w(whichweight);
-parm.neuron  = 32; % # neurons of hidden layer
 parm.lrate   = lr;
-parm.Nepochs = 10000;
+parm.scale   = init_w(whichweight);
+parm.neuron  = 32; % neurons of hidden layer
+parm.Nepochs = 10000; % number of training epochs
 parm.gammas  = gamma_all;
 parm.etas    = eta_all;
-Y = [1 1 1 1 1 1 1 1 % target output matrix, each col = one object
-     1 1 1 1 0 0 0 0
-     0 0 0 0 1 1 1 1
-     1 1 0 0 0 0 0 0
-     0 0 1 1 0 0 0 0
-     0 0 0 0 1 1 0 0
-     0 0 0 0 0 0 1 1
-     eye(4),zeros(4,4)
-     zeros(4,4),eye(4)];
-parm.data = Y;
+parm.outputdata = Y;
 Eyx = Y*X'; % input-output mapping 
 [U,S,V] = svd(Eyx,'econ'); % SVD
             
-Ni = size(Y,2); % obj (item)
-Nf = size(Y,1); % feature, N3
+[Nf, Ni] = size(Y); % [output neurons, items]
+[Nx, ~]  = size(X); % input neurons
 Nrank = min([Ni,Nf]);
 Nh = parm.neuron; % number of neurons in the hidden layer, N2
-
 scale = parm.scale;
 Nepochs = parm.Nepochs;
 allgamma = parm.gammas;
@@ -77,7 +80,6 @@ npair = size(ge_pair,1);
 samp = [1:10:Nepochs-1,Nepochs]';
 nsamp = length(samp);
 
-
 allout = nan(3,nsamp,npair);
 allmode = nan(Nrank,nsamp,npair);
 
@@ -88,7 +90,7 @@ parfor pair = 1:size(ge_pair,1)
        if ~mod(pair,10)
            disp(['>>>>>> ',num2str(pair),' >>>>>>'])
        end
-        W1 = scale*randn(Nh,Ni)/sqrt(Nh);
+        W1 = scale*randn(Nh,Nx)/sqrt(Nh);
         W2 = scale*randn(Nf,Nh)/sqrt(Nf);
         gamma = gvec(pair);
         eta = evec(pair);
@@ -160,7 +162,6 @@ parfor pair = 1:size(ge_pair,1)
             
         end % end of epoch
 
-        
         allout(:,:,pair) = [err(samp); W1_norm(samp); W2_norm(samp)];
         allmode(:,:,pair) = mode_components(:,samp);
         allweight(:,:,pair) = delta_w(:,samp);
